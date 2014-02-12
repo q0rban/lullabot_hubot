@@ -87,15 +87,18 @@ module.exports = (robot) ->
     else
       msg.reply factoids.handleFactoid msg.message.text
 
-  robot.hear /(.+)[\?\!]$/i, (msg) ->
+  robot.hear /(.+)[\?!]$/i, (msg) ->
     factoid = factoids.get msg.match[1]
     if factoid
       if match = /^\ *<reply>(.*)/i.exec factoid
         msg.send match[1]
       else
-        msg.match[1] + " is " + factoid
+        msg.send msg.match[1] + " is " + factoid
 
-  robot.respond /tell (.+) about (.+)/i, (msg) ->
+  #robot.respond /tell (.+) about (.+)/i, (msg) ->
+
+  robot.respond /forget about (.+)/i, (msg) ->
+    msg.reply factoids.delFactoid msg.match[1]
 
   robot.respond /(.+) is (.+)/i, (msg) ->
     msg.reply factoids.setFactoid msg.match[1], msg.match[2]
