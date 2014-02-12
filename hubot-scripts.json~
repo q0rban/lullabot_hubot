@@ -1,6 +1,7 @@
 [
   "announce.coffee",
   "botsnack.coffee",
+  "drupal_ircbot.js",
   "factoid.coffee",
   "karma.coffee",
   "kittens.coffee",
