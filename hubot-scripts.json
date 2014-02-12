@@ -1,7 +1,6 @@
 [
   "announce.coffee",
   "botsnack.coffee",
-  "factoid.coffee",
   "karma.coffee",
   "kittens.coffee",
   "lmgtfy.coffee",
