@@ -1,5 +1,5 @@
 # Description:
-#   Tell Hubot to send a user a message when present in the room
+#   Tell Hubot to send a user a message when present in the room.
 #
 # Dependencies:
 #   None
@@ -8,10 +8,10 @@
 #   None
 #
 # Commands:
-#   hubot tell <username> <some message> - tell <username> <some message> next time they are present. Case-Insensitive prefix matching is employed when matching usernames, so "foo" also matches "Foo" and "foooo"
+#   hubot tell <username> <some message> - tell <username> <some message> next time they are present.
 #
 # Author:
-#   christianchristensen, lorenzhs, xhochy
+#   q0rban
 
 class Tell
   constructor: (@robot) ->
@@ -19,51 +19,59 @@ class Tell
       @cache = @robot.brain.data.tell
       @cache = {} unless @cache
 
-  append: (key, val) ->
-    if @cache[key]
-      @cache[key] = @cache[key] + ", " + val
-      @robot.brain.data.factoids = @cache
-      "Ok. #{key} is also #{val} "
-    else
-      "No factoid for #{key}. It can't also be #{val} if it isn't already something."
-
-  save: (username, room, message) ->
-    time = new Date().toLocaleString()
+  save: (author, username, room, message) ->
     record = {
-      "time": time,
-      "username": username,
+      "author": author,
+      "time": new Date(),
       "room": room,
       "message": message
     }
-    @cache[username] = Array unless @cache[username]
+    @cache[username] = new Array() unless @cache[username]
     @cache[username].push record
-    console.log @cache
     @robot.brain.data.tell = @cache
 
-module.exports = (robot) ->
-   tell = new Tell robot
-   robot.respond /tell ([\w.-]*):? (.*)/i, (msg) ->
-     # Assume we have lullabot_factoid installed, and do nothing if the message
-     # has 'about' in it.
-     if /^about/i.exec msg.match[2]
-       console.log 'doh'
-       return
-     username = msg.match[1]
-     room = msg.message.user.room
-     message = msg.match[2]
-     tell.save username, room, message
-     msg.send "Ok, I'll tell #{username} you said '#{msg.match[2]}'."
-     return
+  check: (username) ->
+    @cache[username].length
 
-   # When a user enters, check if someone left them a message
-   robot.enter (msg) ->
-     username = msg.message.user.name
-     room = msg.message.user.room
-     if localstorage[room]?
-       for recipient, message of localstorage[room]
-         # Check if the recipient matches username
-         if username.match(new RegExp "^"+recipient, "i")
-           tellmessage = username + ": " + localstorage[room][recipient]
-           delete localstorage[room][recipient]
-           msg.send tellmessage
-     return
+  get: (username) ->
+    if this.check username
+      @cache[username]
+
+  clear: (username) ->
+    @cache[username] = null
+    @robot.brain.data.tell = @cache
+
+
+module.exports = (robot) ->
+  tell = new Tell robot
+
+  robot.respond /tell ([\w.-]*):? (.*)/i, (msg) ->
+    # Assume we have lullabot_factoid installed, and do nothing if the message
+    # has 'about' in it.
+    if /^about/i.exec msg.match[2]
+      return
+    author = msg.message.user.name
+    username = msg.match[1]
+    room = msg.message.user.room
+    message = msg.match[2]
+    tell.save author, username, room, message
+    msg.send "Ok, I'll tell #{username} you said '#{msg.match[2]}'."
+    return
+
+  # When a user enters, check if someone left them a message.
+  robot.enter (msg) ->
+    username = msg.message.user.name
+    count = tell.check username
+    if count > 1
+      msg.send "I've got #{count} messages for you, #{username}."
+    if count == 1
+      msg.send "I've got a message for you, #{username}."
+
+  # When a user says something, tell them their messages if they have any.
+  robot.hear /.*/, (msg) ->
+    username = msg.message.user.name
+    if messages = tell.get username
+      for record in messages
+        time = record.time.toLocaleString()
+        msg.send "#{username}, #{record.author} asked me to tell you '#{record.message}'. (#{time} in #{record.room})"
+      tell.clear username
