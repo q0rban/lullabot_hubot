@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+BOTNAME=$1
+
+if [[ -f bots/$BOTNAME ]]; then
+  . "bots/$BOTNAME"
+  bin/hubot -a irc --name="$BOTNAME"
+fi
+
