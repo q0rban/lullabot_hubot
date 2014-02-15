@@ -1,8 +1,17 @@
 #!/usr/bin/env sh
 BOTNAME=$1
 
+echoerr() { echo "$@" 1>&2; }
+
+if [[ -z $BOTNAME ]]; then
+  echoerr "You must specify the name of the bot."
+  exit 1
+fi
+
 if [[ -f bots/$BOTNAME ]]; then
   . "bots/$BOTNAME"
   bin/hubot -a irc --name="$BOTNAME"
+else
+  echoerr "Unable to find configuration file at bots/$BOTNAME."
+  exit 1
 fi
-
