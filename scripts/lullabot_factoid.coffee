@@ -1,6 +1,5 @@
 # Description:
-#   javabot style factoid support for your hubot. Build a factoid library
-#   and save yourself typing out answers to similar questions
+#   Drupal style factoid support for your hubot.
 #
 # Dependencies:
 #   None
@@ -9,18 +8,17 @@
 #   None
 #
 # Commands:
-#   ~<factoid> is <some phrase, link, whatever> - Creates a factoid
-#   ~<factoid> is also <some phrase, link, whatever> - Updates a factoid.
-#   ~<factoid> - Prints the factoid, if it exists. Otherwise tells you there is no factoid
-#   ~tell <user> about <factoid> - Tells the user about a factoid, if it exists
-#   ~~<user> <factoid> - Same as ~tell, less typing
-#   <factoid>? - Same as ~<factiod> except for there is no response if not found
+#   <factoid> is <some phrase, link, whatever> - Creates a factoid
+#   <factoid> is also <some phrase, link, whatever> - Updates a factoid.
+#   <factoid>? - Prints the factoid, if it exists.
+#   <factoid>! - Prints the factoid, if it exists.
+#   hubot: tell <user> about <factoid> - Tells the user about a factoid, if it exists
 #   hubot no, <factoid> is <some phrase, link, whatever> - Replaces the full definition of a factoid
 #   hubot factoids list - List all factoids
-#   hubot factoid delete "<factoid>" - delete a factoid
+#   hubot factoid delete <factoid> - delete a factoid
 #
 # Author:
-#   arthurkalm
+#   q0rban
 
 class Factoids
   constructor: (@robot) ->
@@ -28,29 +26,34 @@ class Factoids
       @cache = @robot.brain.data.factoids
       @cache = {} unless @cache
 
-  add: (key, val) ->
-    if @cache[key]
-      "#{key} is already #{@cache[key]}"
+  add: (key, verb, val) ->
+    if existing = @get key
+      "#{key} #{existing.verb} already #{existing.factoid}"
     else
-      this.setFactoid key, val
+      this.setFactoid key, verb, val
 
-  append: (key, val) ->
-    if @cache[key]
-      @cache[key] = @cache[key] + ", " + val
+  append: (key, verb, val) ->
+    if existing = @get key
+      existing.factoid += " and #{verb} also #{val}"
+      @cache[key] = existing
       @robot.brain.data.factoids = @cache
-      "Ok. #{key} is also #{val} "
+      "Ok. #{key} #{verb} also #{val} "
     else
-      "No factoid for #{key}. It can't also be #{val} if it isn't already something."
+      "No factoid for #{key}."
 
-  setFactoid: (key, val) ->
-    @cache[key] = val
+  setFactoid: (key, verb, val) ->
+    @cache[key] = {
+      "key": key,
+      "verb": verb,
+      "factoid": val
+    }
     @robot.brain.data.factoids = @cache
-    "OK. #{key} is #{val} "
+    "OK. #{key} #{verb} #{val}."
 
   delFactoid: (key) ->
     delete @cache[key]
     @robot.brain.data.factoids = @cache
-    "OK. I forgot about #{key}"
+    "OK. I forgot about #{key}."
 
   niceGet: (key) ->
     @cache[key] or "No factoid for #{key}"
@@ -61,53 +64,35 @@ class Factoids
   list: ->
     Object.keys(@cache)
 
-  tell: (person, key) ->
-    factoid = this.get key
-    if @cache[key]
-      "#{person}, #{key} is #{factoid}"
-    else
-      factoid
-
-  handleFactoid: (text) ->
-    if match = /^~(.+?) is also (.+)/i.exec text
-      this.append match[1], match[2]
-    else if match = /^~(.+?) is (.+)/i.exec text
-      this.add match[1], match[2]
-    else if match = (/^~tell (.+?) about (.+)/i.exec text) or (/^~~(.+) (.+)/.exec text)
-      this.tell match[1], match[2]
-    else if match = /^~(.+)/i.exec text
-      this.niceGet match[1]
+  handleFactoid: (key, verb, factoid) ->
+    if match = /^also (.+)/i.exec factoid
+      @append key, verb, match[1]
+    else if match = /^no,? (.+)/i.exec key
+      @setFactoid match[1], verb, factoid
+    else if not /^(forget about|factoids? delete)/i.exec key
+      @add key, verb, factoid
 
 module.exports = (robot) ->
   factoids = new Factoids robot
 
-  robot.hear /^~(.+)/i, (msg) ->
-    if match = (/^~tell (.+) about (.+)/i.exec msg.match) or (/^~~(.+) (.+)/.exec msg.match)
-      msg.send factoids.handleFactoid msg.message.text
-    else
-      msg.reply factoids.handleFactoid msg.message.text
-
   robot.hear /(.+)[\?!]$/i, (msg) ->
-    factoid = factoids.get msg.match[1]
-    if factoid
+    if record = factoids.get msg.match[1]
+      factoid = record.factoid.replace /!who/ig, msg.message.user.name
       if match = /^\ *<reply>(.*)/i.exec factoid
         msg.send match[1]
       else
-        msg.send msg.match[1] + " is " + factoid
+        msg.send "#{record.key} #{record.verb} #{factoid}"
 
-  #robot.respond /tell (.+) about (.+)/i, (msg) ->
+  robot.respond /tell (.+) about (.+)/i, (msg) ->
+    if record = factoids.get msg.match[2]
+      record.factoid.replace '!who', msg.message.user.name
+      msg.send "#{msg.match[1]}: #{record.key} #{record.verb} #{record.factoid}"
 
-  robot.respond /forget about (.+)/i, (msg) ->
-    msg.reply factoids.delFactoid msg.match[1]
-
-  robot.respond /(.+) is (.+)/i, (msg) ->
-    msg.reply factoids.setFactoid msg.match[1], msg.match[2]
-
-  robot.respond /no, (.+) is (.+)/i, (msg) ->
-    msg.reply factoids.setFactoid msg.match[1], msg.match[2]
+  robot.respond /(.+?) (is|are) (.+)/i, (msg) ->
+    msg.reply factoids.handleFactoid msg.match[1], msg.match[2], msg.match[3]
 
   robot.respond /factoids? list/i, (msg) ->
     msg.send factoids.list().join('\n')
 
-  robot.respond /factoids? delete "(.*)"$/i, (msg) ->
-    msg.reply factoids.delFactoid msg.match[1]
+  robot.respond /(forget about|factoids? delete) (.+)\.?$/i, (msg) ->
+    msg.reply factoids.delFactoid msg.match[2]
