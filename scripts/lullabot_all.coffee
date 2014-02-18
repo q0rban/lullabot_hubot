@@ -12,13 +12,14 @@
 #
 # Author:
 #   q0rban
+_ = require 'underscore'
 
 module.exports = (robot) ->
-
-  _ = require 'underscore'
-
   robot.hear /^all: ?(.*)/i, (msg) ->
     announcer = msg.message.user.name
-    console.log robot.brain.data.users
-    users = _.reject((_.values _.pluck robot.brain.data.users, 'name'), (name) -> name == announcer)
+    room = msg.message.user.room
+    names = _.keys robot.adapter.bot.chans[room].users
+    users = _.reject(names, (name) ->
+      name is announcer or name is robot.name
+    )
     msg.send if users.length then users.join(', ') + ": #{announcer} said #{msg.match[1]}"
