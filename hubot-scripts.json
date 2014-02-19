@@ -1,11 +1,9 @@
 [
-  "announce.coffee",
   "botsnack.coffee",
   "karma.coffee",
   "kittens.coffee",
   "lmgtfy.coffee",
   "meme_generator.coffee",
-  "modulepuppy.coffee",
   "phpdoc.coffee",
   "redis-brain.coffee",
   "reload.coffee",
@@ -13,7 +11,5 @@
   "sensitive.coffee",
   "shipit.coffee",
   "time.coffee",
-  "trolololo.coffee",
-  "yell.coffee",
-  "zombies.coffee"
+  "trolololo.coffee"
 ]
