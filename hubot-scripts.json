@@ -5,7 +5,6 @@
   "lmgtfy.coffee",
   "meme_generator.coffee",
   "phpdoc.coffee",
-  "redis-brain.coffee",
   "reload.coffee",
   "remind.coffee",
   "sensitive.coffee",
